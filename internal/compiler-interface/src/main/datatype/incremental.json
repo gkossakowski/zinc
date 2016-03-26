@@ -320,8 +320,8 @@
       ],
       "fields": [
         {
-          "name": "analysisMap",
-          "type": "xsbti.F1<java.io.File,xsbti.Maybe<xsbti.compile.CompileAnalysis>>",
+          "name": "lookup",
+          "type": "xsbti.compile.Lookup",
           "doc": [
             "Provides the Analysis for the given classpath entry."
           ]

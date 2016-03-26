@@ -17,7 +17,7 @@ import xsbti.compile.{ GlobalsCache, CompileProgress, IncOptions, MiniSetup, Com
  * @param previousSetup
  * @param currentSetup
  * @param progress
- * @param getAnalysis
+ * @param lookup
  * @param definesClass
  * @param reporter
  * @param compiler
@@ -32,7 +32,7 @@ final class CompileConfiguration(
   val previousSetup: Option[MiniSetup],
   val currentSetup: MiniSetup,
   val progress: Option[CompileProgress],
-  val getAnalysis: File => Option[CompileAnalysis],
+  val lookup: Lookup,
   val definesClass: DefinesClass,
   val reporter: Reporter,
   val compiler: AnalyzingCompiler,

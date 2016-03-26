@@ -108,7 +108,7 @@ object MixedAnalyzingCompiler {
     javacOptions: Seq[String] = Nil,
     previousAnalysis: CompileAnalysis,
     previousSetup: Option[MiniSetup],
-    analysisMap: File => Option[CompileAnalysis] = { _ => None },
+    lookup: Lookup,
     definesClass: DefinesClass = Locate.definesClass _,
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
@@ -127,7 +127,7 @@ object MixedAnalyzingCompiler {
         progress,
         previousAnalysis,
         previousSetup,
-        analysisMap,
+        lookup,
         definesClass,
         scalac,
         javac,
@@ -145,7 +145,7 @@ object MixedAnalyzingCompiler {
     progress: Option[CompileProgress],
     previousAnalysis: CompileAnalysis,
     previousSetup: Option[MiniSetup],
-    analysis: File => Option[CompileAnalysis],
+    lookup: Lookup,
     definesClass: DefinesClass,
     compiler: AnalyzingCompiler,
     javac: xsbti.compile.JavaCompiler,
@@ -156,7 +156,7 @@ object MixedAnalyzingCompiler {
   ): CompileConfiguration = {
     import MiniSetupUtil._
     new CompileConfiguration(sources, classpath, previousAnalysis, previousSetup, setup,
-      progress, analysis, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
+      progress, lookup, definesClass, reporter, compiler, javac, cache, incrementalCompilerOptions)
   }
 
   /** Returns the search classpath (for dependencies) and a function which can also do so. */
