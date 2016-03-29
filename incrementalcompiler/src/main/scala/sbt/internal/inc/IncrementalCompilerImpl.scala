@@ -4,9 +4,7 @@ package inc
 
 import sbt.internal.inc.javac.{ IncrementalCompilerJavaTools, JavaTools }
 import xsbti.{ F1, Logger, Maybe, Position, Reporter, T2 }
-import xsbti.compile.{ CompileAnalysis, CompileOptions, CompileOrder, CompileResult, GlobalsCache, IncOptions, MiniSetup }
-import xsbti.compile.{ DefinesClass, IncrementalCompiler, Inputs, PreviousResult, Setup }
-import xsbti.compile.{ CompileProgress, Output, Compilers => XCompilers }
+import xsbti.compile.{ Compilers => XCompilers, _ }
 import java.io.File
 
 import sbt.util.Logger.m2o
@@ -44,23 +42,11 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       incrementalCompile(scalac, javacChosen, sources, classpath, CompileOutput(classesDirectory), cache, None, scalacOptions, javacOptions,
         m2o(in.previousResult.analysis),
         m2o(in.previousResult.setup),
-        new LookupWrapper(lookup),
+        analysisLookup,
         { f => { s => definesClass()(f)(s) } },
         reporter, order, skip, incrementalCompilerOptions,
         extra.toList map { x => (x.get1, x.get2) })(log)
     }
-
-  private class LookupWrapper(wrappedLookup: xsbti.compile.Lookup) extends Lookup {
-    import sbt.util.InterfaceUtil.m2o
-    override def lookupOnClasspath(binaryClassName: String): Option[File] =
-      m2o(wrappedLookup.lookupOnClasspath(binaryClassName))
-    override def lookupAnalysis(classFile: File): Option[CompileAnalysis] =
-      m2o(wrappedLookup.lookupAnalysis(classFile))
-    override def lookupAnalysis(binaryDependency: File, binaryClassName: String): Option[CompileAnalysis] =
-      m2o(wrappedLookup.lookupAnalysis(binaryDependency, binaryClassName))
-    override def lookupAnalysis(binaryClassName: String): Option[CompileAnalysis] =
-      m2o(wrappedLookup.lookupAnalysis(binaryClassName))
-  }
 
   /**
    * This will run a mixed-compilation of Java/Scala sources
@@ -98,7 +84,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
     javacOptions: Seq[String] = Nil,
     previousAnalysis: Option[CompileAnalysis],
     previousSetup: Option[MiniSetup],
-    lookup: Lookup,
+    lookup: AnalysisLookup,
     definesClass: Locate.DefinesClass = Locate.definesClass _,
     reporter: Reporter,
     compileOrder: CompileOrder = Mixed,
@@ -124,7 +110,7 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
   }
 
   /*
-  private class LookupImpl(compileConfiguration: CompileConfiguration) extends Lookup {
+  private class LookupImpl(compileConfiguration: CompileConfiguration) extends AnalysisLookup {
     private val entry = MixedAnalyzingCompiler.classPathLookup(compileConfiguration)
 
     override def lookupOnClasspath(binaryClassName: String): Option[File] =
@@ -171,11 +157,26 @@ class IncrementalCompilerImpl extends IncrementalCompiler {
       case Some(previous) if equiv.equiv(previous, currentSetup) => previousAnalysis
       case _ => Incremental.prune(sourcesSet, previousAnalysis)
     }
+    val lookupWrapper = new LookupWrapper(mixedCompiler.config)
     // Run the incremental compiler using the mixed compiler we've defined.
-    IncrementalCompile(sourcesSet, mixedCompiler.config.lookup, mixedCompiler.compile, analysis, output, log, incOptions).swap
+    IncrementalCompile(sourcesSet, lookupWrapper, mixedCompiler.compile, analysis, output, log, incOptions).swap
   }
 
-  def setup(lookup: xsbti.compile.Lookup, definesClass: F1[File, DefinesClass], skip: Boolean, cacheFile: File, cache: GlobalsCache,
+  private class LookupWrapper(config: CompileConfiguration) extends Lookup {
+    import config.lookup
+    import sbt.util.InterfaceUtil.m2o
+    private val entry = MixedAnalyzingCompiler.classPathLookup(config)
+    override def lookupOnClasspath(binaryClassName: String): Option[File] =
+      entry(binaryClassName)
+    override def lookupAnalysis(classFile: File): Option[CompileAnalysis] =
+      m2o(lookup.lookupAnalysis(classFile))
+    override def lookupAnalysis(binaryDependency: File, binaryClassName: String): Option[CompileAnalysis] =
+      m2o(lookup.lookupAnalysis(binaryDependency, binaryClassName))
+    override def lookupAnalysis(binaryClassName: String): Option[CompileAnalysis] =
+      m2o(lookup.lookupAnalysis(binaryClassName))
+  }
+
+  def setup(lookup: AnalysisLookup, definesClass: F1[File, DefinesClass], skip: Boolean, cacheFile: File, cache: GlobalsCache,
     incrementalCompilerOptions: IncOptions, reporter: Reporter, extra: Array[T2[String, String]]): Setup =
     new Setup(lookup, definesClass, skip, cacheFile, cache, incrementalCompilerOptions, reporter, extra)
   def inputs(options: CompileOptions, compilers: XCompilers, setup: Setup, pr: PreviousResult): Inputs =

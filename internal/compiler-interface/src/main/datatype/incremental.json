@@ -320,8 +320,8 @@
       ],
       "fields": [
         {
-          "name": "lookup",
-          "type": "xsbti.compile.Lookup",
+          "name": "analysisLookup",
+          "type": "xsbti.compile.AnalysisLookup",
           "doc": [
             "Provides the Analysis for the given classpath entry."
           ]
