@@ -20,6 +20,16 @@ trait ClassName {
    */
   protected def className(s: Symbol): String = pickledName(s)
 
+  /**
+   * Create a (source) name for the class symbol `s` with a prefix determined by the class symbol `in`.
+   */
+  protected def classNameAsSeenIn(in: Symbol, s: Symbol): String = enteringPhase(currentRun.picklerPhase.next) {
+    if (in.isRoot || in.isRootPackage || in == NoSymbol || in.isEffectiveRoot)
+      s.simpleName.toString
+    else
+      in.fullName + "." + s.simpleName
+  }
+
   private def pickledName(s: Symbol): String =
     enteringPhase(currentRun.picklerPhase.next) { s.fullName }
 
