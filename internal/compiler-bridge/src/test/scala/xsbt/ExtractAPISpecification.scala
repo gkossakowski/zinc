@@ -158,6 +158,20 @@ class ExtractAPISpecification extends UnitSpec {
     assert(apis("A.AA") !== apis("B.AA"))
   }
 
+  it should "handle package objects and type companions" in {
+    val src =
+      """|package object abc {
+         |  type BuildInfoKey = BuildInfoKey.Entry[_]
+         |  object BuildInfoKey {
+         |    sealed trait Entry[A]
+         |  }
+         |}
+      """.stripMargin
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val apis = compilerForTesting.extractApisFromSrc(src).map(a => a.name -> a).toMap
+    assert(apis.keySet === Set("abc.package", "abc.BuildInfoKey", "abc.BuildInfoKey.Entry"))
+  }
+
   /**
    * Checks if self type is properly extracted in various cases of declaring a self type
    * with our without a self variable.
