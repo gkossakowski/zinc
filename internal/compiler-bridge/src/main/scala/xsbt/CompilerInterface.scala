@@ -25,14 +25,8 @@ final class CompilerInterface {
   def run(sources: Array[File], changes: DependencyChanges, callback: AnalysisCallback, log: Logger, delegate: Reporter, progress: CompileProgress, cached: CachedCompiler): Unit =
     cached.run(sources, changes, callback, log, delegate, progress)
 }
-// for compatibility with Scala versions without Global.registerTopLevelSym (2.8.1 and earlier)
-sealed trait GlobalCompat { self: Global =>
-  def registerTopLevelSym(sym: Symbol): Unit
-  sealed trait RunCompat {
-    def informUnitStarting(phase: Phase, unit: CompilationUnit): Unit = ()
-  }
-}
-sealed abstract class CallbackGlobal(settings: Settings, reporter: reporters.Reporter, output: Output) extends Global(settings, reporter) with GlobalCompat {
+
+sealed abstract class CallbackGlobal(settings: Settings, reporter: reporters.Reporter, output: Output) extends Global(settings, reporter) {
   def callback: AnalysisCallback
   def findClass(name: String): Option[(AbstractFile, Boolean)]
   lazy val outputDirs: Iterable[File] = {
@@ -116,7 +110,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
     if (noErrors(dreporter)) {
       debug(log, args.mkString("Calling Scala compiler with arguments  (CompilerInterface):\n\t", "\n\t", ""))
       compiler.set(callback, dreporter)
-      val run = new compiler.Run with compiler.RunCompat {
+      val run = new compiler.Run {
         override def informUnitStarting(phase: Phase, unit: compiler.CompilationUnit): Unit = {
           compileProgress.startUnit(phase.name, unit.source.path)
         }

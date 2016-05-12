@@ -88,7 +88,6 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
           if (onSource == null) {
             classFile(dep.to) match {
               case Some((f, binaryClassName, inOutDir)) =>
-                if (inOutDir && dep.to.isJavaDefined) registerTopLevelSym(dep.to)
                 f match {
                   case ze: ZipArchive#Entry =>
                     for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) binaryDependency(zipFile, binaryClassName)
