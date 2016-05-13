@@ -16,23 +16,31 @@ abstract class LocateClassFile extends ClassName {
   import global._
 
   private[this] final val classSeparator = '.'
-  protected def classFile(sym: Symbol): Option[(AbstractFile, String, Boolean)] =
+
+  // carries a (cached) binary class name along with a class symbol
+  protected case class ClassSymbolWithBinaryName(symbol: Symbol) {
+    assert(symbol.isClass, symbol)
+    lazy val binaryClassName: String = flatname(symbol, classSeparator) + symbol.moduleSuffix
+  }
+
+  protected def classFile(wrapper: ClassSymbolWithBinaryName): Option[AbstractFile] = {
+    val sym = wrapper.symbol
     // package can never have a corresponding class file; this test does not
     // catch package objects (that do not have this flag set)
-    if (sym hasFlag scala.tools.nsc.symtab.Flags.PACKAGE) None else {
-      import scala.tools.nsc.symtab.Flags
-      val binaryClassName = flatname(sym, classSeparator) + sym.moduleSuffix
-      findClass(binaryClassName).map { case (file, inOut) => (file, binaryClassName, inOut) } orElse {
+    if (sym hasFlag scala.tools.nsc.symtab.Flags.PACKAGE) None
+    else {
+      findClass(wrapper.binaryClassName) orElse {
         if (isTopLevelModule(sym)) {
           val linked = sym.companionClass
           if (linked == NoSymbol)
             None
           else
-            classFile(linked)
+            classFile(ClassSymbolWithBinaryName(linked))
         } else
           None
       }
     }
+  }
 
   protected def fileForClass(outputDirectory: File, s: Symbol, separatorRequired: Boolean): File =
     new File(outputDirectory, flatclassName(s, File.separatorChar, separatorRequired) + ".class")

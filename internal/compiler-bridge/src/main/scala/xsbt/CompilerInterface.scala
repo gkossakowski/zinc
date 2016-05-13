@@ -28,7 +28,7 @@ final class CompilerInterface {
 
 sealed abstract class CallbackGlobal(settings: Settings, reporter: reporters.Reporter, output: Output) extends Global(settings, reporter) {
   def callback: AnalysisCallback
-  def findClass(name: String): Option[(AbstractFile, Boolean)]
+  def findClass(name: String): Option[AbstractFile]
   lazy val outputDirs: Iterable[File] = {
     output match {
       case single: SingleOutput  => List(single.outputDirectory)
@@ -238,8 +238,8 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
       reporter = null
     }
 
-    def findClass(name: String): Option[(AbstractFile, Boolean)] =
-      getOutputClass(name).map(f => (f, true)) orElse findOnClassPath(name).map(f => (f, false))
+    def findClass(name: String): Option[AbstractFile] =
+      getOutputClass(name) orElse findOnClassPath(name)
 
     def getOutputClass(name: String): Option[AbstractFile] =
       {
@@ -249,7 +249,7 @@ private final class CachedCompiler0(args: Array[String], output: Output, initial
       }
 
     def findOnClassPath(name: String): Option[AbstractFile] =
-      classPath.findClass(name).flatMap(_.binary.asInstanceOf[Option[AbstractFile]])
+      classPath.findClass(name).flatMap(_.binary)
 
     private[this] var callback0: AnalysisCallback = null
     def callback: AnalysisCallback = callback0

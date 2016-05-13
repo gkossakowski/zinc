@@ -8,8 +8,9 @@ import scala.collection.mutable.{ ArrayBuffer, HashMap }
 import xsbti.SafeLazy
 import xsbti.api._
 import xsbti.api.DependencyContext._
-import xsbt.api.{ HashAPI, NameHashing, APIUtil }
+import xsbt.api.{ APIUtil, HashAPI, NameHashing }
 import sbt.internal.util.Relation
+import xsbti.{ F0, Maybe }
 
 case class TestAnalysis(
   relations: inc.Relations,
@@ -141,10 +142,10 @@ class TestAnalysisCallback(
     ()
   }
 
-  def binaryDependency(onBinary: File, onBinaryClassName: String, fromClassName: String, fromSourceFile: File, context: DependencyContext): Unit = {
+  def binaryDependency(onBinary: F0[Maybe[File]], onBinaryClassName: String, fromClassName: String, fromSourceFile: File, context: DependencyContext): Unit = {
     internalBinaryToSourceClassName get onBinaryClassName match {
       case Some(internal) => classDependency(internal, fromClassName, context)
-      case None           => binaryDependencies += ((onBinary, onBinaryClassName, fromClassName, context)); ()
+      case None           => binaryDependencies += ((onBinary().get(), onBinaryClassName, fromClassName, context)); ()
     }
   }
 

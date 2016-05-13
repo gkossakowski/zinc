@@ -12,12 +12,14 @@ import scala.annotation.tailrec
 import java.io.File
 import java.lang.annotation.Annotation
 import java.lang.reflect.Method
-import java.lang.reflect.Modifier.{ STATIC, PUBLIC, ABSTRACT }
+import java.lang.reflect.Modifier.{ ABSTRACT, PUBLIC, STATIC }
 import java.net.URL
+
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext._
 import sbt.io.IO
-import sbt.util.Logger
+import sbt.util.{ InterfaceUtil, Logger }
+import xsbti.Maybe
 
 private[sbt] object Analyze {
   def apply[T](newClasses: Seq[File], sources: Seq[File], log: Logger)(analysis: xsbti.AnalysisCallback, loader: ClassLoader, readAPI: (File, Seq[Class[_]]) => Set[(String, String)]): Unit = {
@@ -82,12 +84,12 @@ private[sbt] object Analyze {
         trapAndLog(log) {
           for (url <- Option(loader.getResource(onBinaryName.replace('.', '/') + ClassExt)); file <- urlAsFile(url, log)) {
             if (url.getProtocol == "jar")
-              analysis.binaryDependency(file, onBinaryName, fromClassName, source, context)
+              analysis.binaryDependency(InterfaceUtil.f0(Maybe.just(file)), onBinaryName, fromClassName, source, context)
             else {
               assume(url.getProtocol == "file")
               productToClassName.get(file) match {
                 case Some(dependsOn) => analysis.classDependency(dependsOn, fromClassName, context)
-                case None            => analysis.binaryDependency(file, onBinaryName, fromClassName, source, context)
+                case None            => analysis.binaryDependency(InterfaceUtil.f0(Maybe.just(file)), onBinaryName, fromClassName, source, context)
               }
             }
           }

@@ -7,6 +7,7 @@ import java.io.File
 
 import xsbti.api.DependencyContext
 import DependencyContext._
+import sbt.util.InterfaceUtil
 
 import scala.tools.nsc.io.{ PlainFile, ZipArchive }
 import scala.tools.nsc.Phase
@@ -82,20 +83,22 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
          */
         def processDependency(context: DependencyContext)(dep: ClassDependency): Unit = {
           val fromClassName = className(dep.from)
-          def binaryDependency(file: File, onBinaryClassName: String) =
-            callback.binaryDependency(file, onBinaryClassName, fromClassName, sourceFile, context)
+          val wrappedTo = ClassSymbolWithBinaryName(dep.to)
+          def binaryDependency(file: => Option[File], onBinaryClassName: String) =
+            callback.binaryDependency(InterfaceUtil.f0(InterfaceUtil.o2m(file)), onBinaryClassName, fromClassName, sourceFile, context)
+          def binaryFile(w: ClassSymbolWithBinaryName): Option[File] = classFile(w) match {
+            case Some(f) =>
+              f match {
+                case ze: ZipArchive#Entry =>
+                  for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) yield zipFile
+                case pf: PlainFile => Some(pf.file)
+                case _             => None
+              }
+            case None => None
+          }
           val onSource = dep.to.sourceFile
           if (onSource == null) {
-            classFile(dep.to) match {
-              case Some((f, binaryClassName, inOutDir)) =>
-                f match {
-                  case ze: ZipArchive#Entry =>
-                    for (zip <- ze.underlyingSource; zipFile <- Option(zip.file)) binaryDependency(zipFile, binaryClassName)
-                  case pf: PlainFile => binaryDependency(pf.file, binaryClassName)
-                  case _             => ()
-                }
-              case None => ()
-            }
+            binaryDependency(binaryFile(wrappedTo), wrappedTo.binaryClassName)
           } else if (onSource.file != sourceFile) {
             val onClassName = className(dep.to)
             callback.classDependency(onClassName, fromClassName, context)

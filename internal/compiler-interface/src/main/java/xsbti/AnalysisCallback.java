@@ -21,7 +21,7 @@ public interface AnalysisCallback {
      * Language Specification 13.1 for details on binary name format.
      * <code>context</code> gives information about the context in which this dependency has been extracted.
      * See xsbti.DependencyContext for the list of existing dependency contexts. */
-    void binaryDependency(File onBinary, String onBinaryClassName, String fromClassName, File fromSourceFile, DependencyContext context);
+    void binaryDependency(F0<Maybe<File>> onBinary, String onBinaryClassName, String fromClassName, File fromSourceFile, DependencyContext context);
     /** Called to indicate that the source file <code>source</code> produces a class file at
      * <code>module</code> contain class <code>name</code>.*/
     void generatedNonLocalClass(File source, File classFile, String binaryClassName, String srcClassName);

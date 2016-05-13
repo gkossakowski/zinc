@@ -23,8 +23,8 @@ class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCa
       classDependencies += ((onClassName, sourceClassName, context))
     ()
   }
-  def binaryDependency(onBinary: File, onBinaryClassName: String, fromClassName: String, fromSourceFile: File, context: DependencyContext): Unit = {
-    binaryDependencies += ((onBinary, onBinaryClassName, fromClassName, context))
+  def binaryDependency(onBinary: F0[Maybe[File]], onBinaryClassName: String, fromClassName: String, fromSourceFile: File, context: DependencyContext): Unit = {
+    binaryDependencies += ((onBinary().get(), onBinaryClassName, fromClassName, context))
     ()
   }
   def generatedNonLocalClass(source: File, module: File, binaryClassName: String, srcClassName: String): Unit = {

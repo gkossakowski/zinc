@@ -6,13 +6,14 @@ package internal
 package inc
 
 import sbt.internal.inc.Analysis.{ LocalProduct, NonLocalProduct }
-import xsbt.api.{ NameHashing, APIUtil, HashAPI }
+import xsbt.api.{ APIUtil, HashAPI, NameHashing }
 import xsbti.api._
-import xsbti.compile.{ DependencyChanges, Output, SingleOutput, MultipleOutput, CompileAnalysis, IncOptions }
-import xsbti.{ Position, Problem, Severity, SafeLazy }
+import xsbti.compile.{ CompileAnalysis, DependencyChanges, IncOptions, MultipleOutput, Output, SingleOutput }
+import xsbti._
 import sbt.util.Logger
 import sbt.util.Logger.{ m2o, problem }
 import java.io.File
+
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.{ DependencyByInheritance, DependencyByMemberRef }
 
@@ -123,7 +124,7 @@ private final class AnalysisCallback(
   // mapping between src class name and binary (flat) class name for classes generated from src file
   private[this] val classNames = new HashMap[File, Set[(String, String)]]
   // generated class file to its source class name
-  private[this] val classToSource = new HashMap[File, String]
+  private[this] val binaryToSourceClassName = new HashMap[String, String]
   // internal source dependencies
   private[this] val intSrcDeps = new HashMap[String, Set[InternalDependency]]
   // external source dependencies
@@ -166,19 +167,21 @@ private final class AnalysisCallback(
     add(extSrcDeps, sourceClassName, dependency)
   }
 
-  def binaryDependency(classFile: File, onBinaryClassName: String, fromClassName: String, fromSourceFile: File, context: DependencyContext) =
+  def binaryDependency(classFile: F0[Maybe[File]], onBinaryClassName: String, fromClassName: String, fromSourceFile: File, context: DependencyContext) =
     internalBinaryToSourceClassName(onBinaryClassName) match {
       case Some(dependsOn) => // dependsOn is a source class name
         // dependency is a product of a source not included in this compilation
         classDependency(dependsOn, fromClassName, context)
       case None =>
-        classToSource.get(classFile) match {
+        binaryToSourceClassName.get(onBinaryClassName) match {
           case Some(dependsOn) =>
             // dependency is a product of a source in this compilation step,
             //  but not in the same compiler run (as in javac v. scalac)
             classDependency(dependsOn, fromClassName, context)
           case None =>
-            externalDependency(classFile, onBinaryClassName, fromClassName, fromSourceFile, context)
+            val file = classFile()
+            if (file.isDefined)
+              externalDependency(file.get(), onBinaryClassName, fromClassName, fromSourceFile, context)
         }
     }
 
@@ -197,7 +200,7 @@ private final class AnalysisCallback(
   def generatedNonLocalClass(source: File, classFile: File, binaryClassName: String, srcClassName: String): Unit = {
     add(nonLocalClasses, source, (classFile, binaryClassName))
     add(classNames, source, (srcClassName, binaryClassName))
-    classToSource.put(classFile, srcClassName)
+    binaryToSourceClassName.put(binaryClassName, srcClassName)
     ()
   }
 
