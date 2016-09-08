@@ -59,16 +59,33 @@ object TestCallback {
       ExtractedClassDependencies(pairsToMultiMap(memberRefPairs), pairsToMultiMap(inheritancePairs),
         pairsToMultiMap(localInheritancePairs))
     }
+  }
 
-    private def pairsToMultiMap[A, B](pairs: Seq[(A, B)]): Map[A, Set[B]] = {
-      import scala.collection.mutable.{ HashMap, MultiMap }
-      val emptyMultiMap = new HashMap[A, scala.collection.mutable.Set[B]] with MultiMap[A, B]
-      val multiMap = pairs.foldLeft(emptyMultiMap) {
-        case (acc, (key, value)) =>
-          acc.addBinding(key, value)
-      }
-      // convert all collections to immutable variants
-      multiMap.toMap.mapValues(_.toSet).withDefaultValue(Set.empty)
+  case class BinaryDependency(binaryFile: Option[File], binaryClassName: String)
+  case class BinaryDependencies(
+    memberRef: Map[String, Set[BinaryDependency]],
+    inheritance: Map[String, Set[BinaryDependency]],
+    localInheritance: Map[String, Set[BinaryDependency]]
+  )
+  object BinaryDependencies {
+    def fromPairs(
+      memberRefPairs: Seq[(String, BinaryDependency)],
+      inheritancePairs: Seq[(String, BinaryDependency)],
+      localInheritancePairs: Seq[(String, BinaryDependency)]
+    ): BinaryDependencies = {
+      BinaryDependencies(pairsToMultiMap(memberRefPairs), pairsToMultiMap(inheritancePairs),
+        pairsToMultiMap(localInheritancePairs))
     }
+  }
+
+  private def pairsToMultiMap[A, B](pairs: Seq[(A, B)]): Map[A, Set[B]] = {
+    import scala.collection.mutable.{ HashMap, MultiMap }
+    val emptyMultiMap = new HashMap[A, scala.collection.mutable.Set[B]] with MultiMap[A, B]
+    val multiMap = pairs.foldLeft(emptyMultiMap) {
+      case (acc, (key, value)) =>
+        acc.addBinding(key, value)
+    }
+    // convert all collections to immutable variants
+    multiMap.toMap.mapValues(_.toSet).withDefaultValue(Set.empty)
   }
 }

@@ -1,13 +1,13 @@
 package xsbt
 
-import xsbti.TestCallback.ExtractedClassDependencies
+import xsbti.TestCallback.{ BinaryDependencies, ExtractedClassDependencies }
 import xsbti.compile.SingleOutput
 import java.io.File
+
 import _root_.scala.tools.nsc.reporters.ConsoleReporter
 import xsbti._
 import sbt.io.IO.withTemporaryDirectory
 import xsbti.api.ClassLike
-
 import sbt.internal.util.ConsoleLogger
 import xsbti.api.DependencyContext._
 
@@ -15,7 +15,7 @@ import xsbti.api.DependencyContext._
  * Provides common functionality needed for unit tests that require compiling
  * source code using Scala compiler.
  */
-class ScalaCompilerForUnitTesting(nameHashing: Boolean = true) {
+class ScalaCompilerForUnitTesting(nameHashing: Boolean = true, reuseCompilerInstance: Boolean = true) {
 
   /**
    * Compiles given source code using Scala compiler and returns API representation
@@ -30,8 +30,8 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = true) {
    * Compiles given source code using Scala compiler and returns API representation
    * extracted by ExtractAPI class.
    */
-  def extractApisFromSrcs(reuseCompilerInstance: Boolean)(srcs: List[String]*): Seq[Set[ClassLike]] = {
-    val (tempSrcFiles, analysisCallback) = compileSrcs(srcs.toList, reuseCompilerInstance)
+  def extractApisFromSrcs(srcs: List[String]*): Seq[Set[ClassLike]] = {
+    val (tempSrcFiles, analysisCallback) = compileSrcs(srcs.toList)
     tempSrcFiles.map(analysisCallback.apis)
   }
 
@@ -72,7 +72,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = true) {
    * file system-independent way of testing dependencies between source code "files".
    */
   def extractDependenciesFromSrcs(srcs: List[List[String]]): ExtractedClassDependencies = {
-    val (_, testCallback) = compileSrcs(srcs, reuseCompilerInstance = true)
+    val (_, testCallback) = compileSrcs(srcs)
 
     val memberRefDeps = testCallback.classDependencies collect {
       case (target, src, DependencyByMemberRef) => (src, target)
@@ -91,6 +91,34 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = true) {
   }
 
   /**
+   * Compiles given source code snippets (passed as Strings) using Scala compiler and returns extracted
+   * binary dependencies from snippets.
+   *
+   * Snippets can be grouped to be compiled together in the same compiler run. This way, the extracted dependencies
+   * between classes become source dependencies instead of binary dependencies.
+   *
+   */
+  def extractBinaryDependenciesFromSrcs(srcs: List[List[String]]): BinaryDependencies = {
+    val (_, testCallback) = compileSrcs(srcs)
+
+    import TestCallback.BinaryDependency
+
+    val memberRefDeps = testCallback.binaryDependencies collect {
+      case (onBinaryFile, onBinaryClassName, fromClassName, DependencyByMemberRef) =>
+        fromClassName -> BinaryDependency(onBinaryFile, onBinaryClassName)
+    }
+    val inheritanceDeps = testCallback.binaryDependencies collect {
+      case (onBinaryFile, onBinaryClassName, fromClassName, DependencyByInheritance) =>
+        fromClassName -> BinaryDependency(onBinaryFile, onBinaryClassName)
+    }
+    val localInheritanceDeps = testCallback.binaryDependencies collect {
+      case (onBinaryFile, onBinaryClassName, fromClassName, LocalDependencyByInheritance) =>
+        fromClassName -> BinaryDependency(onBinaryFile, onBinaryClassName)
+    }
+    BinaryDependencies.fromPairs(memberRefDeps, inheritanceDeps, localInheritanceDeps)
+  }
+
+  /**
    * Compiles given source code snippets written to temporary files. Each snippet is
    * written to a separate temporary file.
    *
@@ -106,10 +134,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = true) {
    * The sequence of temporary files corresponding to passed snippets and analysis
    * callback is returned as a result.
    */
-  private def compileSrcs(
-    groupedSrcs: List[List[String]],
-    reuseCompilerInstance: Boolean
-  ): (Seq[File], TestCallback) = {
+  private def compileSrcs(groupedSrcs: List[List[String]]): (Seq[File], TestCallback) = {
     withTemporaryDirectory { temp =>
       val analysisCallback = new TestCallback(nameHashing)
       val classesDir = new File(temp, "classes")
@@ -141,7 +166,7 @@ class ScalaCompilerForUnitTesting(nameHashing: Boolean = true) {
   }
 
   private def compileSrcs(srcs: String*): (Seq[File], TestCallback) = {
-    compileSrcs(List(srcs.toList), reuseCompilerInstance = true)
+    compileSrcs(List(srcs.toList))
   }
 
   private def prepareSrcFile(baseDir: File, fileName: String, src: String): File = {

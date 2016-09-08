@@ -137,8 +137,8 @@ class ExtractAPISpecification extends UnitSpec {
         |  class Foo extends Namers
         |}
         |""".stripMargin
-    val compilerForTesting = new ScalaCompilerForUnitTesting
-    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = false)(List(src1, src2), List(src2))
+    val compilerForTesting = new ScalaCompilerForUnitTesting(reuseCompilerInstance = false)
+    val apis = compilerForTesting.extractApisFromSrcs(List(src1, src2), List(src2))
     val _ :: src2Api1 :: src2Api2 :: Nil = apis.toList
     val namerApi1 = selectNamer(src2Api1)
     val namerApi2 = selectNamer(src2Api2)
@@ -187,8 +187,8 @@ class ExtractAPISpecification extends UnitSpec {
     val srcC6 = "class C6 extends AnyRef with X { self: X with Y => }"
     val srcC7 = "class C7 { _ => }"
     val srcC8 = "class C8 { self => }"
-    val compilerForTesting = new ScalaCompilerForUnitTesting
-    val apis = compilerForTesting.extractApisFromSrcs(reuseCompilerInstance = true)(
+    val compilerForTesting = new ScalaCompilerForUnitTesting(reuseCompilerInstance = true)
+    val apis = compilerForTesting.extractApisFromSrcs(
       List(srcX, srcY, srcC1, srcC2, srcC3, srcC4, srcC5, srcC6, srcC7, srcC8)
     ).map(_.head)
     val emptyType = new EmptyType

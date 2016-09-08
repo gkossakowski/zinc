@@ -144,7 +144,9 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
         s"The ${fromClass.fullName} defined at ${fromClass.fullLocationString} is not a class symbol."
       )
       val depClass = enclOrModuleClass(dep)
-      if (fromClass.associatedFile != depClass.associatedFile) {
+      // some symbols that are not ClassSymbols can have package symbol directly as an owner. This can happen for
+      // some synthetic symbols like AnyRef type alias; we filter out package classes
+      if ((fromClass.associatedFile != depClass.associatedFile) && depClass != NoSymbol && !depClass.hasPackageFlag) {
         deps += ClassDependency(fromClass, depClass)
         ()
       }
