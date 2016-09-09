@@ -7,7 +7,6 @@ import java.io.File
 
 import xsbti.api.DependencyContext
 import DependencyContext._
-import sbt.util.InterfaceUtil
 
 import scala.tools.nsc.io.{ PlainFile, ZipArchive }
 import scala.tools.nsc.Phase
@@ -84,8 +83,10 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
         def processDependency(context: DependencyContext)(dep: ClassDependency): Unit = {
           val fromClassName = className(dep.from)
           val wrappedTo = ClassSymbolWithBinaryName(dep.to)
-          def binaryDependency(file: => Option[File], onBinaryClassName: String) =
-            callback.binaryDependency(InterfaceUtil.f0(InterfaceUtil.o2m(file)), onBinaryClassName, fromClassName, sourceFile, context)
+          def binaryDependency(file: => Option[File], onBinaryClassName: String) = {
+            val fileThunk = ConvertersToXsbti.f0(ConvertersToXsbti.o2m(file))
+            callback.binaryDependency(fileThunk, onBinaryClassName, fromClassName, sourceFile, context)
+          }
           def binaryFile(w: ClassSymbolWithBinaryName): Option[File] = classFile(w) match {
             case Some(f) =>
               f match {
