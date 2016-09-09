@@ -1,7 +1,8 @@
 package xsbt
 
-import xsbti.TestCallback.ExtractedClassDependencies
+import xsbti.TestCallback.{ BinaryDependency, ExtractedClassDependencies }
 import sbt.internal.util.UnitSpec
+import xsbti.api.DependencyContext
 
 class DependencySpecification extends UnitSpec {
 
@@ -145,6 +146,25 @@ class DependencySpecification extends UnitSpec {
     assert(deps("F") === Set.empty)
     assert(deps("foo.bar.G") === Set("abc.A"))
     assert(deps("H") === Set("abc.A"))
+  }
+
+  it should "import just class and not non-existing object" in {
+    val srcA =
+      """
+        |package abc
+        |class A""".stripMargin
+    val srcB = "import abc.A; class B"
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting(reuseCompilerInstance = false)
+    def isJarDependency(d: BinaryDependency): Boolean =
+      d.binaryFile.exists(f => f.getName endsWith ".jar")
+    val extractedDeps = compilerForTesting.extractBinaryDependenciesFromSrcs(List(List(srcA), List(srcB))).memberRef
+    val deps = extractedDeps mapValues {
+      _.filterNot(isJarDependency).map(_.binaryClassName)
+    }
+
+    assert(deps("abc.A") === Set.empty)
+    assert(deps("B") === Set("abc.A"))
   }
 
   private def extractClassDependenciesPublic: ExtractedClassDependencies = {

@@ -19,7 +19,7 @@ abstract class LocateClassFile extends ClassName {
 
   // carries a (cached) binary class name along with a class symbol
   protected case class ClassSymbolWithBinaryName(symbol: Symbol) {
-    assert(symbol.isClass, symbol)
+    assert(symbol.isClass || symbol.isModuleOrModuleClass, symbol)
     lazy val binaryClassName: String = flatname(symbol, classSeparator) + symbol.moduleSuffix
   }
 

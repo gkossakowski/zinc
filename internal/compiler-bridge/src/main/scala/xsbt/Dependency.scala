@@ -167,7 +167,10 @@ final class Dependency(val global: CallbackGlobal) extends LocateClassFile with 
         symbolsInType(tree.tpe).foreach(addDependency)
       ()
     }
-    private def addDependency(dep: Symbol): Unit = {
+    // we have to check if a passed Symbol exists to make sure that the passed symbol
+    // has a corresponding class file generated (why do we have Symbols that do not
+    // exist is a mystery to me)
+    private def addDependency(dep: Symbol): Unit = if (dep != NoSymbol && !dep.hasPackageFlag && dep.exists) {
       val (fromClass, _) = resolveDependencySource
       if (fromClass == NoSymbol || fromClass.hasPackageFlag) {
         if (inImportNode) addTopLevelImportDependency(dep)
