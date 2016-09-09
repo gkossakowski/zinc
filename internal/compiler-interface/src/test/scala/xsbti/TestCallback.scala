@@ -7,7 +7,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCallback {
   val classDependencies = new ArrayBuffer[(String, String, DependencyContext)]
-  val binaryDependencies = new ArrayBuffer[(File, String, String, DependencyContext)]
+  val binaryDependencies = new ArrayBuffer[(Option[File], String, String, DependencyContext)]
   val products = new ArrayBuffer[(File, File)]
   val usedNames = scala.collection.mutable.Map.empty[String, Set[String]].withDefaultValue(Set.empty)
   val classNames = scala.collection.mutable.Map.empty[File, Set[(String, String)]].withDefaultValue(Set.empty)
@@ -24,7 +24,11 @@ class TestCallback(override val nameHashing: Boolean = false) extends AnalysisCa
     ()
   }
   def binaryDependency(onBinary: F0[Maybe[File]], onBinaryClassName: String, fromClassName: String, fromSourceFile: File, context: DependencyContext): Unit = {
-    binaryDependencies += ((onBinary().get(), onBinaryClassName, fromClassName, context))
+    val binaryFile = {
+      val maybeFile = onBinary()
+      if (maybeFile.isDefined) Some(maybeFile.get) else None
+    }
+    binaryDependencies += ((binaryFile, onBinaryClassName, fromClassName, context))
     ()
   }
   def generatedNonLocalClass(source: File, module: File, binaryClassName: String, srcClassName: String): Unit = {
